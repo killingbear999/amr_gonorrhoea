@@ -19,7 +19,7 @@ functions {
     # compute rate of screening in the absence of symptoms in group H
     return(eta_H_init * (1 + phi_eta * (t - t_0)));
   }
-  real[] syphilis_model(real t, real[] y, real[] theta, real[] x_r, int[] x_i) {
+  real[] amr_model(real t, real[] y, real[] theta, real[] x_r, int[] x_i) {
       # initial conditions
       real U_N_H = y[1];
       real E_N_H_0 = y[2];
@@ -167,8 +167,9 @@ functions {
 }
 data {
   int<lower=1> n_years; # Number of years modelling
+  int<lower=0> n_burntin; # Number of burnt-in years
   real<lower=0> y0[34]; # Initial conditions for all compartments
-  real ts[n_years + 6]; # Sequences of time steps
+  real ts[n_years+n_nurntin]; # Sequences of time steps
   real t_0;
   real q_H;
   real c_H;
@@ -180,6 +181,7 @@ data {
   int cases_t[n_years]; # Annual tetracycline-resistant gonorrhoea cases
   int cases_d2[n_years]; # Annual dual-resistant gonorrhoea cases
   int cases_symptomatic[n_years]; # Annual symptomatic gonorrhoea cases
+  int samples[n_years]; # Annual size of the GRASP sample
   int alpha;
   int N_t0;
   int gamma;
@@ -226,53 +228,106 @@ parameters {
   real<lower=0.05, upper=1> kappa_S;
 }
 transformed parameters{
-  real y[n_years+6, 16];
-  real incidence[n_years+5];
-  real theta[13];
+  real y[n_years+n_nurntin, 34];
+  real incidence_tests[n_years+n_nurntin];
+  real incidence_cases_0[n_years+n_nurntin];
+  real incidence_cases_c[n_years+n_nurntin];
+  real incidence_cases_t[n_years+n_nurntin];
+  real incidence_cases_d2[n_years+n_nurntin];
+  real incidence_symptomatic[n_years+n_nurntin];
+  real incidence_asymptomatic[n_years+n_nurntin];
+  
+  real theta[23];
   theta[1] = beta;
   theta[2] = phi_beta;
   theta[3] = epsilon;
-  theta[4] = rho;
-  theta[5] = eta_H_init;
-  theta[6] = phi_eta;
-  theta[7] = omega;
-  theta[8] = sigma;
-  theta[9] = mu;
-  theta[10] = psi_S;
-  theta[11] = psi_E;
-  theta[12] = psi_L;
-  theta[13] = kappa_D;
+  theta[4] = sigma;
+  theta[5] = psi
+  theta[6] = mu;
+  theta[7] = eta_H_init;
+  theta[8] = omega;
+  theta[9] = phi_eta;
+  theta[10] = rho;
+  theta[11] = nu;
+  theta[12] = phi;
+  theta[13] = f_c;
+  theta[14] = f_t;
+  theta[15] = f_d2;
+  theta[16] = w_c;
+  theta[17] = w_t;
+  theta[18] = kappa_T;
+  theta[19] = kappa_0;
+  theta[20] = kappa_c;
+  theta[21] = kappa_t;
+  theta[22] = kappa_d2;
+  theta[23] = kappa_S;
 
-  y = integrate_ode_bdf(syphilis_model, y0, t_0, ts, theta, x_r, x_i);
-  for (t in 1:(n_years+5)) {
-    # Trapezoidal rule: (f(a) + f(b)) / 2 * (b - a)
-    incidence[t] = 0.5 * rho * (y[t, 8] + y[t + 1, 8] + y[t, 16] + y[t + 1, 16]);
+  y = integrate_ode_bdf(amr_model, y0, t_0, ts, theta, x_r, x_i);
+  for (t in 1:(n_years+n_nurntin)) {
+    incidence_cases_0[t] = rho * (y[t, 5] + y[t, 22]);
+    incidence_cases_c[t] = rho * (y[t, 9] + y[t, 26]);
+    incidence_cases_t[t] = rho * (y[t, 13] + y[t, 30]);
+    incidence_cases_d2[t] = rho * (y[t, 17] + y[t, 34]);
+    
+    eta_H_t = eta_H_init * (1 + phi_eta * (t - t_0));
+    eta_L_t = omega * eta_H_t;
+    incidence_tests = eta_H_t * (y[t, 1] + y[t, 3] + y[t, 7] + y[t, 11] + y[t, 15]) + mu * (y[t, 4] + y[t, 8] + y[t, 12] + y[t, 16]) + eta_L_t * (y[t, 18] + y[t, 20] + y[t, 24] + y[t, 28] + y[t, 32]) + mu * (y[t, 21] + y[t, 25] + y[t, 29] + y[t, 33]);
+    incidence_symptomatic = mu * (y[t, 4] + y[t, 8] + y[t, 12] + y[t, 16]) + mu * (y[t, 21] + y[t, 25] + y[t, 29] + y[t, 33]);
+    incidence_asymptomatic = eta_H_t * (y[t, 3] + y[t, 7] + y[t, 11] + y[t, 15]) + eta_L_t * (y[t, 20] + y[t, 24] + y[t, 28] + y[t, 32]);
   }
 }
 model {
   # priors
-  beta ~ uniform(0,1);
-  phi_beta ~ uniform(0,1);
-  epsilon ~ uniform(0,1);
-  rho ~ lognormal(log(20), 0.3); # 20.94 (11.1, 35.9)
-  eta_H_init ~ uniform(0,4);
-  phi_eta ~ uniform(0,1);
-  omega ~ lognormal(-0.87,0.39); # 0.451 (0.22, 0.80)
-  sigma ~ lognormal(log(15), 0.5); # 17 (6.6, 34.1)
-  mu ~ lognormal(log(200), 0.6); # 239.5 (74.6, 535.9)
-  psi_S ~ lognormal(log(10), 0.4); # 10.83 (5.18, 19.19)
-  psi_E ~ lognormal(log(2), 0.4); # 2.17 (1.04, 3.86)
-  psi_L ~ lognormal(log(0.5), 0.4); # 0.542 (0.26, 0.97)
-  kappa_D ~ uniform(0,1);
+  beta ~ uniform(0, 1);
+  phi_beta ~ uniform(0, 1);
+  epsilon ~ uniform(0, 1);
+  sigma ~ gamma(16.7, 4.6);  
+  psi ~ uniform(0, 1);  
+  mu ~ gamma(3.2, 42.6);  
+  eta_H_init ~ uniform(0, 4);
+  omega ~ lognormal(-0.87, 0.39);
+  phi_eta ~ uniform(0, 1);
+  rho ~ gamma(108.6, 0.48); 
+  nu ~ gamma(8.5, 0.27); 
+  phi ~ gamma(0.001, 1000);
+  f_c ~ lognormal(-0.0204, 0.02);
+  f_t ~ lognormal(-0.0204, 0.02);
+  f_d2 ~ lognormal(-0.0408, 0.02);
+  w_c ~ lognormal(log(1e-8), 0.01);
+  w_t ~ gamma(0.001, 1000);
+  kappa_T ~ uniform(0, 1);
+  kappa_0 ~ uniform(0, 1);
+  kappa_c ~ uniform(0, 1);
+  kappa_t ~ uniform(0, 1);
+  kappa_d2 ~ uniform(0, 1);
+  kappa_S ~ uniform(0, 1);
   
-  # sampling distribution
-  for (i in 1:(n_years)) {
-    cases[i] ~ neg_binomial_2(incidence[i + 5], kappa_D);
+  # observation models
+  for (t in 1:n_years) {
+    cases_0[t] ~ neg_binomial_2(incidence_cases_0[t+n_nurntin], kappa_0);
+    cases_c[t] ~ neg_binomial_2(incidence_cases_c[t+n_nurntin], kappa_c);
+    cases_t[t] ~ neg_binomial_2(incidence_cases_t[t+n_nurntin], kappa_t);
+    cases_d2[t] ~ neg_binomial_2(incidence_cases_d2[t+n_nurntin], kappa_d2);
+    tests[t] ~ neg_binomial_2(incidence_tests[t+n_nurntin], kappa_T);
+    
+    real p_sym;
+    real alpha;
+    real beta;
+    p_sym = Y_S[t] / (Y_S[t] + Y_A[t] + 1e-9); # Symptomatic proportion from transmission model
+    alpha = p_sym * kappa_S; # Beta-Binomial parameters
+    beta  = (1 - p_sym) * kappa_S; # Beta-Binomial parameters
+    cases_symptomatic[t] ~ beta_binomial(samples[t], alpha, beta);
   }
 }
 generated quantities {
-  real pred_cases[n_years];
+  real pred_cases_0[n_years];
+  real pred_cases_c[n_years];
+  real pred_cases_t[n_years];
+  real pred_cases_d2[n_years];
   for (t in 1:n_years) {
-    pred_cases[t] = neg_binomial_2_rng(incidence[t+5], kappa_D);
+    pred_cases_0[t] = neg_binomial_2_rng(incidence_cases_0[t+n_nurntin], kappa_0);
+    pred_cases_c[t] = neg_binomial_2_rng(incidence_cases_c[t+n_nurntin], kappa_c);
+    pred_cases_t[t] = neg_binomial_2_rng(incidence_cases_t[t+n_nurntin], kappa_t);
+    pred_cases_d2[t] = neg_binomial_2_rng(incidence_cases_d2[t+n_nurntin], kappa_d2);
   }
 }
