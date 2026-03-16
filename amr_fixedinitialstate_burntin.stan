@@ -1,7 +1,7 @@
 functions {
-  real get_C(real E_N_0, real A_N_0, real S_N_0) {
+  real get_C(real E_N, real A_N, real S_N) {
     # compute strain-specific infectious population size of MSM in group j
-    return(E_N_0 + A_N_0 + S_N_0);
+    return(E_N + A_N + S_N);
   }
   real get_N(real U_N, real E_N_0, real A_N_0, real S_N_0, real T_N_0, real E_N_c, real A_N_c, real S_N_c, real T_N_c, real E_N_t, real A_N_t, real S_N_t, real T_N_t, real E_N_d2, real A_N_d2, real S_N_d2, real T_N_d2) {
     # compute population size of MSM in group j
@@ -87,11 +87,11 @@ functions {
       real w_c = theta[16]; # Probability of emergence of ceftriaxone resistance upon treatment with ceftriaxone
       real w_t = theta[17]; # Probability of emergence of tetracycline resistance upon taking doxy-PEP for syphilis after gonorrhoea infection
       real kappa_T = theta[18]; # Shape parameter of GUMCAD dataset (annual number of gonorrhoea tests)
-      real kappa_0 = theta[19]; # Shape parameter of GUMCAD dataset (annual number of gonorrhoea diagnoses, susceptible)
-      real kappa_c = theta[20]; # Shape parameter of GUMCAD dataset (annual number of gonorrhoea diagnoses, ceftriaxone-resistant)
-      real kappa_t = theta[21]; # Shape parameter of GUMCAD dataset (annual number of gonorrhoea diagnoses, tetracycline-resistant)
-      real kappa_d2 = theta[22]; # Shape parameter of GUMCAD dataset (annual number of gonorrhoea diagnoses, dual-resistant)
-      real kappa_S = theta[23]; # Shape parameter of GRASP dataset (annual number of symptomatic diagnoses)
+      // real kappa_0 = theta[19]; # Shape parameter of GUMCAD dataset (annual number of gonorrhoea diagnoses, susceptible)
+      // real kappa_c = theta[20]; # Shape parameter of GUMCAD dataset (annual number of gonorrhoea diagnoses, ceftriaxone-resistant)
+      // real kappa_t = theta[21]; # Shape parameter of GUMCAD dataset (annual number of gonorrhoea diagnoses, tetracycline-resistant)
+      // real kappa_d2 = theta[22]; # Shape parameter of GUMCAD dataset (annual number of gonorrhoea diagnoses, dual-resistant)
+      real kappa_S = theta[19]; # Shape parameter of GRASP dataset (annual number of symptomatic diagnoses)
       
       # time-dependent variables
       real C_H_0 = get_C(E_N_H_0, A_N_H_0, S_N_H_0); # Number of susceptible infectious individuals in group H
@@ -133,7 +133,7 @@ functions {
       real dA_N_H_c = sigma * (1 - psi) * E_N_H_c - (nu + eta_H + 1/gamma) * A_N_H_c + phi * rho * T_N_H_c;
       real dS_N_H_c = sigma * psi * E_N_H_c - (mu + 1/gamma) * S_N_H_c;
       real dT_N_H_c = eta_H * A_N_H_c + mu * S_N_H_c - (rho + 1/gamma) * T_N_H_c + w_c * rho * T_N_H_0;
-      real dE_N_H_t = f_c * lambda_H_t * U_N_H - (sigma + 1/gamma) * E_N_H_t;
+      real dE_N_H_t = f_t * lambda_H_t * U_N_H - (sigma + 1/gamma) * E_N_H_t;
       real dA_N_H_t = sigma * (1 - psi) * E_N_H_t - (nu + eta_H + 1/gamma) * A_N_H_t;
       real dS_N_H_t = sigma * psi * E_N_H_t - (mu + 1/gamma) * S_N_H_t;
       real dT_N_H_t = eta_H * A_N_H_t + mu * S_N_H_t - (rho + 1/gamma) * T_N_H_t;
@@ -153,7 +153,7 @@ functions {
       real dA_N_L_c = sigma * (1 - psi) * E_N_L_c - (nu + eta_L + 1/gamma) * A_N_L_c + phi * rho * T_N_L_c;
       real dS_N_L_c = sigma * psi * E_N_L_c - (mu + 1/gamma) * S_N_L_c;
       real dT_N_L_c = eta_L * A_N_L_c + mu * S_N_L_c - (rho + 1/gamma) * T_N_L_c + w_c * rho * T_N_L_0;
-      real dE_N_L_t = f_c * lambda_L_t * U_N_L - (sigma + 1/gamma) * E_N_L_t;
+      real dE_N_L_t = f_t * lambda_L_t * U_N_L - (sigma + 1/gamma) * E_N_L_t;
       real dA_N_L_t = sigma * (1 - psi) * E_N_L_t - (nu + eta_L + 1/gamma) * A_N_L_t;
       real dS_N_L_t = sigma * psi * E_N_L_t - (mu + 1/gamma) * S_N_L_t;
       real dT_N_L_t = eta_L * A_N_L_t + mu * S_N_L_t - (rho + 1/gamma) * T_N_L_t;
@@ -178,6 +178,7 @@ data {
   real c_L;
   real q_L;
   int tests[n_years]; # Annual gonorrhoea tests
+  int cases_all[n_years]; # Annual gonorrhoea cases
   int cases_0[n_years_cases]; # Annual susceptible gonorrhoea cases
   int cases_c[n_years_cases]; # Annual ceftriaxone-resistant gonorrhoea cases
   int cases_t[n_years_cases]; # Annual tetracycline-resistant gonorrhoea cases
@@ -208,14 +209,14 @@ parameters {
   real<lower=1e-6, upper=1> beta;
   real<lower=1e-6, upper=0.5> phi_beta;
   real<lower=1e-6, upper=1> epsilon;
-  real<lower=5, upper=200> sigma;
+  real<lower=1e-6, upper=1e3> sigma;
   real<lower=1e-6, upper=1> psi;
-  real<lower=5, upper=300> mu;
+  real<lower=1e-6, upper=2e3> mu;
   real<lower=1e-6, upper=2> eta_H_init;
   real<lower=0.1, upper=1> omega;
   real<lower=1e-6, upper=0.3> phi_eta;
-  real<lower=50, upper=500> rho;
-  real<lower=0.5, upper=20> nu;
+  real<lower=1e-6, upper=200> rho;
+  real<lower=1e-6, upper=50>  nu;
   real<lower=1e-6, upper=0.2> phi;
   real<lower=0.7, upper=1.1> f_c;
   real<lower=0.7, upper=1.1> f_t;
@@ -223,15 +224,16 @@ parameters {
   real<lower=1e-10, upper=1e-5> w_c;
   real<lower=1e-6, upper=1e-2> w_t;
   real<lower=0.05, upper=1> kappa_T;
-  real<lower=0.05, upper=1> kappa_0;
-  real<lower=0.05, upper=1> kappa_c;
-  real<lower=0.05, upper=1> kappa_t;
-  real<lower=0.05, upper=1> kappa_d2;
+  // real<lower=0.05, upper=1> kappa_0;
+  // real<lower=0.05, upper=1> kappa_c;
+  // real<lower=0.05, upper=1> kappa_t;
+  // real<lower=0.05, upper=1> kappa_d2;
   real<lower=0.05, upper=1> kappa_S;
 }
 transformed parameters{
   real y[n_years+n_burntin+1, 34];
   real incidence_tests[n_years+n_burntin];
+  real incidence_cases_all[n_years+n_burntin];
   real incidence_cases_0[n_years+n_burntin];
   real incidence_cases_c[n_years+n_burntin];
   real incidence_cases_t[n_years+n_burntin];
@@ -239,7 +241,7 @@ transformed parameters{
   real incidence_symptomatic[n_years+n_burntin];
   real incidence_asymptomatic[n_years+n_burntin];
   
-  real theta[23];
+  real theta[19];
   theta[1] = beta;
   theta[2] = phi_beta;
   theta[3] = epsilon;
@@ -258,18 +260,20 @@ transformed parameters{
   theta[16] = w_c;
   theta[17] = w_t;
   theta[18] = kappa_T;
-  theta[19] = kappa_0;
-  theta[20] = kappa_c;
-  theta[21] = kappa_t;
-  theta[22] = kappa_d2;
-  theta[23] = kappa_S;
+  // theta[19] = kappa_0;
+  // theta[20] = kappa_c;
+  // theta[21] = kappa_t;
+  // theta[22] = kappa_d2;
+  theta[19] = kappa_S;
 
   y = integrate_ode_bdf(amr_model, y0, t_0, ts, theta, x_r, x_i);
   for (t in 1:(n_years+n_burntin)) {
     incidence_cases_0[t] = 0.5 * rho * (y[t, 5] + y[t+1, 5] + y[t, 22] + y[t+1, 22]);
-    incidence_cases_c[t] = fmax(0.5 * rho * (y[t, 9] + y[t+1, 9] + y[t, 26] + y[t+1, 26]), 1e-10);
+    incidence_cases_c[t] = 0.5 * rho * (y[t, 9] + y[t+1, 9] + y[t, 26] + y[t+1, 26]);
     incidence_cases_t[t] = 0.5 * rho * (y[t, 13] + y[t+1, 13] + y[t, 30] + y[t+1, 30]);
-    incidence_cases_d2[t] = fmax(0.5 * rho * (y[t, 17] + y[t+1, 17] + y[t, 34] + y[t+1, 34]), 1e-10);
+    incidence_cases_d2[t] = 0.5 * rho * (y[t, 17] + y[t+1, 17] + y[t, 34] + y[t+1, 34]);
+    
+    incidence_cases_all[t] = incidence_cases_0[t] + incidence_cases_c[t] + incidence_cases_t[t] + incidence_cases_d2[t];
     
     real eta_H_t = eta_H_init * (1 + phi_eta * (t - t_0));
     real eta_H_t1 = eta_H_init * (1 + phi_eta * (t+1 - t_0));
@@ -286,14 +290,14 @@ model {
   beta ~ uniform(0, 1);
   phi_beta ~ uniform(0, 1);
   epsilon ~ uniform(0, 1);
-  sigma ~ gamma(16.7, 4.6);  
+  sigma ~ lognormal(4.60, 0.29);
   psi ~ uniform(0, 1);  
-  mu ~ gamma(3.2, 42.6);  
+  mu ~ lognormal(5.38, 0.44);
   eta_H_init ~ uniform(0, 4);
   omega ~ lognormal(-0.87, 0.39);
   phi_eta ~ uniform(0, 1);
-  rho ~ gamma(108.6, 0.48); 
-  nu ~ gamma(8.5, 0.27); 
+  rho ~ lognormal(3.99, 0.11);
+  nu ~ lognormal(1.13, 0.34); 
   phi ~ gamma(0.001, 1000);
   f_c ~ lognormal(-0.0204, 0.02);
   f_t ~ lognormal(-0.0204, 0.02);
@@ -301,32 +305,29 @@ model {
   w_c ~ lognormal(log(1e-8), 0.01);
   w_t ~ gamma(0.001, 1000);
   kappa_T ~ uniform(0, 1);
-  kappa_0 ~ uniform(0, 1);
-  kappa_c ~ uniform(0, 1);
-  kappa_t ~ uniform(0, 1);
-  kappa_d2 ~ uniform(0, 1);
+  // kappa_0 ~ uniform(0, 1);
+  // kappa_c ~ uniform(0, 1);
+  // kappa_t ~ uniform(0, 1);
+  // kappa_d2 ~ uniform(0, 1);
   kappa_S ~ uniform(0, 1);
   
   # observation models
   for (t in 1:n_years) {
-    if (t >= 5 && t <= (n_years-2)) {
-      cases_0[t-4] ~ neg_binomial_2(incidence_cases_0[t+n_burntin], kappa_0);
-      cases_c[t-4] ~ neg_binomial_2(incidence_cases_c[t+n_burntin], kappa_c);
-      cases_t[t-4] ~ neg_binomial_2(incidence_cases_t[t+n_burntin], kappa_t);
-      cases_d2[t-4] ~ neg_binomial_2(incidence_cases_d2[t+n_burntin], kappa_d2);
-    }
+    cases_0[t] ~ neg_binomial_2(incidence_cases_0[t+n_burntin], kappa_T);
+    cases_c[t] ~ neg_binomial_2(incidence_cases_c[t+n_burntin], kappa_T);
+    cases_t[t] ~ neg_binomial_2(incidence_cases_t[t+n_burntin], kappa_T);
+    cases_d2[t] ~ neg_binomial_2(incidence_cases_d2[t+n_burntin], kappa_T);
     
     tests[t] ~ neg_binomial_2(incidence_tests[t+n_burntin], kappa_T);
+    cases_all[t] ~ neg_binomial_2(incidence_cases_all[t+n_burntin], kappa_T);
     
-    if (t >= 3) {
-      real p_sym;
-      real alpha_binomial;
-      real beta_binomial;
-      p_sym = incidence_symptomatic[t+n_burntin] / (incidence_symptomatic[t+n_burntin] + incidence_asymptomatic[t+n_burntin] + 1e-9); # Symptomatic proportion from transmission model
-      alpha_binomial = fmax(p_sym * kappa_S, 1e-6);
-      beta_binomial  = fmax((1 - p_sym) * kappa_S, 1e-6);
-      cases_symptomatic[t-2] ~ beta_binomial(samples[t-2], alpha_binomial, beta_binomial);
-    }
+    real p_sym;
+    real alpha_binomial;
+    real beta_binomial;
+    p_sym = incidence_symptomatic[t+n_burntin] / (incidence_symptomatic[t+n_burntin] + incidence_asymptomatic[t+n_burntin]); # Symptomatic proportion from transmission model
+    alpha_binomial = p_sym * kappa_S;
+    beta_binomial  = (1 - p_sym) * kappa_S;
+    cases_symptomatic[t] ~ beta_binomial(samples[t], alpha_binomial, beta_binomial);
   }
 }
 generated quantities {
@@ -334,28 +335,12 @@ generated quantities {
   real pred_cases_c[n_years];
   real pred_cases_t[n_years];
   real pred_cases_d2[n_years];
-  // print("Before:");
-  // print(incidence_cases_0);
-  // print(incidence_cases_c);
-  // print(incidence_cases_t);
-  // print(incidence_cases_d2);
+  real pred_cases_all[n_years];
   for (t in 1:n_years) {
-    // print(kappa_0);
-    // print(incidence_cases_0[t+n_burntin]);
-    // print(kappa_c);
-    // print(incidence_cases_c[t+n_burntin]);
-    // print(kappa_t);
-    // print(incidence_cases_t[t+n_burntin]);
-    // print(kappa_d2);
-    // print(incidence_cases_d2[t+n_burntin]);
-    pred_cases_0[t] = neg_binomial_2_rng(incidence_cases_0[t+n_burntin], kappa_0);
-    pred_cases_c[t] = neg_binomial_2_rng(incidence_cases_c[t+n_burntin], kappa_c);
-    pred_cases_t[t] = neg_binomial_2_rng(incidence_cases_t[t+n_burntin], kappa_t);
-    pred_cases_d2[t] = neg_binomial_2_rng(incidence_cases_d2[t+n_burntin], kappa_d2);
+    pred_cases_0[t] = neg_binomial_2_rng(incidence_cases_0[t+n_burntin], kappa_T);
+    pred_cases_c[t] = neg_binomial_2_rng(incidence_cases_c[t+n_burntin], kappa_T);
+    pred_cases_t[t] = neg_binomial_2_rng(incidence_cases_t[t+n_burntin], kappa_T);
+    pred_cases_d2[t] = neg_binomial_2_rng(incidence_cases_d2[t+n_burntin], kappa_T);
+    pred_cases_all[t] = neg_binomial_2_rng(incidence_cases_all[t+n_burntin], kappa_T);
   }
-  // print("After");
-  // print(pred_cases_0);
-  // print(pred_cases_c);
-  // print(pred_cases_t);
-  // print(pred_cases_d2);
 }
