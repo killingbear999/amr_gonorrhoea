@@ -306,7 +306,7 @@ p1 <- ggplot(
     size = 4
   ) +
   labs(
-    title = "Susceptible (England)"
+    title = "Susceptible"
     # x = "Year",
     # y = "Annual Number of Susceptible Diagnosed Cases"
   ) +
@@ -339,7 +339,9 @@ p1 <- ggplot(
     axis.text.x  = element_text(),
     axis.text.y  = element_text(),
     
-    axis.ticks.y = element_blank(),
+    axis.ticks.y = element_line(color = "black", linewidth = 0.5),
+    axis.ticks.length.y = unit(1, "mm"),
+    
     axis.line.x  = element_line(color = "black", linewidth = 0.5),
     axis.line.y  = element_line(color = "black", linewidth = 0.5)
   )
@@ -368,7 +370,7 @@ p2 <- ggplot(
     size = 4
   ) +
   labs(
-    title = "Ceftriaxone-Resistant (England)"
+    title = "Ceftriaxone-resistant"
     # x = "Year",
     # y = "Annual Number of Ceftriaxone-Resistant Diagnosed Cases"
   ) +
@@ -401,7 +403,9 @@ p2 <- ggplot(
     axis.text.x  = element_text(),
     axis.text.y  = element_text(),
     
-    axis.ticks.y = element_blank(),
+    axis.ticks.y = element_line(color = "black", linewidth = 0.5),
+    axis.ticks.length.y = unit(1, "mm"),
+    
     axis.line.x  = element_line(color = "black", linewidth = 0.5),
     axis.line.y  = element_line(color = "black", linewidth = 0.5)
   )
@@ -430,7 +434,7 @@ p3 <- ggplot(
     size = 4
   ) +
   labs(
-    title = "Tetracycline-Resistant (England)"
+    title = "Tetracycline-resistant"
     # x = "Year",
     # y = "Annual Number of Tetracycline-Resistant Diagnosed Cases"
   ) +
@@ -463,7 +467,9 @@ p3 <- ggplot(
     axis.text.x  = element_text(),
     axis.text.y  = element_text(),
     
-    axis.ticks.y = element_blank(),
+    axis.ticks.y = element_line(color = "black", linewidth = 0.5),
+    axis.ticks.length.y = unit(1, "mm"),
+    
     axis.line.x  = element_line(color = "black", linewidth = 0.5),
     axis.line.y  = element_line(color = "black", linewidth = 0.5)
   )
@@ -492,7 +498,7 @@ p4 <- ggplot(
     size = 4
   ) +
   labs(
-    title = "Dual-Resistant (England)"
+    title = "Dual Resistant"
     # x = "Year",
     # y = "Annual Number of Dual-Resistant Diagnosed Cases"
   ) +
@@ -525,7 +531,9 @@ p4 <- ggplot(
     axis.text.x  = element_text(),
     axis.text.y  = element_text(),
     
-    axis.ticks.y = element_blank(),
+    axis.ticks.y = element_line(color = "black", linewidth = 0.5),
+    axis.ticks.length.y = unit(1, "mm"),
+    
     axis.line.x  = element_line(color = "black", linewidth = 0.5),
     axis.line.y  = element_line(color = "black", linewidth = 0.5)
   )
@@ -554,7 +562,7 @@ p5 <- ggplot(
     size = 4
   ) +
   labs(
-    title = "All (England)"
+    title = "All"
     # x = "Year",
     # y = "Annual Number of All Diagnosed Cases"
   ) +
@@ -587,7 +595,9 @@ p5 <- ggplot(
     axis.text.x  = element_text(),
     axis.text.y  = element_text(),
     
-    axis.ticks.y = element_blank(),
+    axis.ticks.y = element_line(color = "black", linewidth = 0.5),
+    axis.ticks.length.y = unit(1, "mm"),
+    
     axis.line.x  = element_line(color = "black", linewidth = 0.5),
     axis.line.y  = element_line(color = "black", linewidth = 0.5)
   )
