@@ -38,7 +38,7 @@ amr_model <- function(t, y, parameters) {
   with(as.list(c(y, parameters)), {
     # two cases: 1. the inferred trends in the time-varying behavioural parameters stabilise
     #            2. the trends continue until the end of the modelled period
-    isFixed <- FALSE
+    isFixed <- TRUE
     
     C_H_0 = get_C(E_N_H_0, A_N_H_0, S_N_H_0, E_D_H_0, A_D_H_0, S_D_H_0, E_V_H_0, A_V_H_0, S_V_H_0, E_M_H_0, A_M_H_0, S_M_H_0)
     C_L_0 = get_C(E_N_L_0, A_N_L_0, S_N_L_0, E_D_L_0, A_D_L_0, S_D_L_0, E_V_L_0, A_V_L_0, S_V_L_0, E_M_L_0, A_M_L_0, S_M_L_0)
@@ -291,6 +291,7 @@ run_amr <- function(p_d, p_v, phi) {
   cases_c <- matrix(NA, nrow = n_iter, ncol = n_years)
   cases_t <- matrix(NA, nrow = n_iter, ncol = n_years)
   cases_d2 <- matrix(NA, nrow = n_iter, ncol = n_years)
+  enrolment <- matrix(NA, nrow = n_iter, ncol = n_years)
   for (i in 1:n_iter) {
     # times
     t <- seq(8, 8+n_years+1, by = 1)
@@ -477,9 +478,10 @@ run_amr <- function(p_d, p_v, phi) {
     incidence_c <- numeric(n_years)
     incidence_t <- numeric(n_years)
     incidence_d2 <- numeric(n_years)
+    doses <- numeric(n_years)
     
     for (t in 1:(n_years)) {
-      isFixed = FALSE
+      isFixed = TRUE
       
       C_H_0 = get_C(out[t,3],  out[t,4],  out[t,5],
                     out[t,20], out[t,21], out[t,22],
@@ -578,6 +580,7 @@ run_amr <- function(p_d, p_v, phi) {
       lambda_L_d2 = get_lambda(t+8, t_0, c_L, params$beta, params$phi_beta, params$epsilon, C_L_d2, N_L, pi_L, C_H_d2, N_H, pi_H, isFixed)
       
       # Trapezoidal rule: (f(a) + f(b)) / 2 * (b - a)
+      # index starts from 2 instead of 1 (out[,1] is the time variable)
       E_N_0 = 0.5 * lambda_H_0 * (out[t, 2] + out[t + 1, 2]) + 0.5 * lambda_L_0 * (out[t, 2+68] + out[t + 1, 2+68])
       E_D_0 = 0.5 * e_d * lambda_H_0 * (out[t, 19] + out[t + 1, 19]) + 0.5 * e_d * lambda_L_0 * (out[t, 19+68] + out[t + 1, 19+68])
       E_V_0 = 0.5 * e_vd * lambda_H_0 * (out[t, 36] + out[t + 1, 36]) +  0.5 * e_vd * lambda_L_0 * (out[t, 36+68] + out[t + 1, 36+68])
@@ -603,6 +606,16 @@ run_amr <- function(p_d, p_v, phi) {
       incidence_d2[t] = E_N_d2 + E_D_d2 + E_V_d2 + E_M_d2
       
       incidence_all[t] = incidence_0[t] + incidence_c[t] + incidence_t[t] + incidence_d2[t]
+      
+      eta_H_t <- get_eta(t+8, t_0, params$eta_H_init, params$phi_eta, isFixed)
+      eta_H_t1 <- get_eta(t+8+1, t_0, params$eta_H_init, params$phi_eta, isFixed)
+      eta_L_t <- params$omega * eta_H_t
+      eta_L_t1 <- params$omega * eta_H_t1
+      
+      Y_N_t = 0.5 * (eta_H_t * out[t, 2] + eta_H_t1 * out[t + 1, 2] + eta_L_t * out[t, 2+68] + eta_L_t1 * out[t + 1, 2+68])
+      Y_M_t = 0.5 * (eta_H_t * out[t, 53] + eta_H_t1 * out[t + 1, 53] + eta_L_t * out[t, 53+68] + eta_L_t1 * out[t + 1, 53+68])
+      Y_D_t = 0.5 * (eta_H_t * out[t, 19] + eta_H_t1 * out[t + 1, 19] + eta_L_t * out[t, 19+68] + eta_L_t1 * out[t + 1, 19+68])
+      doses[t] = params$p_d * (Y_N_t + Y_M_t) + params$p_v * (Y_N_t + Y_D_t)
     }
     
     cases_all[i,] <- incidence_all
@@ -610,6 +623,7 @@ run_amr <- function(p_d, p_v, phi) {
     cases_c[i,] <- incidence_c
     cases_t[i,] <- incidence_t
     cases_d2[i,] <- incidence_d2
+    enrolment[i,] <- doses
   }
   
   return(list(
@@ -617,7 +631,8 @@ run_amr <- function(p_d, p_v, phi) {
     cases_0 = cases_0,
     cases_c = cases_c,
     cases_t = cases_t,
-    cases_d2 = cases_d2
+    cases_d2 = cases_d2,
+    enrolment = enrolment
   ))
 }
 
@@ -632,6 +647,7 @@ baseline_cases_0 <- result_baseline$cases_0
 baseline_cases_c <- result_baseline$cases_c
 baseline_cases_t <- result_baseline$cases_t
 baseline_cases_d2 <- result_baseline$cases_d2
+baseline_enrolment <- result_baseline$enrolment
 
 smr_baseline_cases_all <- as.data.frame(
   t(apply(baseline_cases_all, 2, quantile,
@@ -663,6 +679,12 @@ smr_baseline_cases_d2 <- as.data.frame(
           na.rm = TRUE))
 )
 
+smr_baseline_enrolment <- as.data.frame(
+  t(quantile(rowSums(baseline_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
 # doxy-PEP
 p_d = 0.66
 p_v = 0
@@ -673,6 +695,7 @@ pep_cases_0 <- result_pep$cases_0
 pep_cases_c <- result_pep$cases_c
 pep_cases_t <- result_pep$cases_t
 pep_cases_d2 <- result_pep$cases_d2
+pep_enrolment <- result_pep$enrolment
 
 smr_pep_cases_all <- as.data.frame(
   t(apply(pep_cases_all, 2, quantile,
@@ -704,6 +727,12 @@ smr_pep_cases_d2 <- as.data.frame(
           na.rm = TRUE))
 )
 
+smr_pep_enrolment <- as.data.frame(
+  t(quantile(rowSums(pep_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
 # Vaccination
 p_d = 0
 p_v = 0.66
@@ -714,6 +743,7 @@ vac_cases_0 <- result_vac$cases_0
 vac_cases_c <- result_vac$cases_c
 vac_cases_t <- result_vac$cases_t
 vac_cases_d2 <- result_vac$cases_d2
+vac_enrolment <- result_vac$enrolment
 
 smr_vac_cases_all <- as.data.frame(
   t(apply(vac_cases_all, 2, quantile,
@@ -745,6 +775,12 @@ smr_vac_cases_d2 <- as.data.frame(
           na.rm = TRUE))
 )
 
+smr_vac_enrolment <- as.data.frame(
+  t(quantile(rowSums(vac_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
 # doxy-PEP + Vaccination
 p_d = 0.66
 p_v = 0.66
@@ -755,6 +791,7 @@ both_cases_0 <- result_both$cases_0
 both_cases_c <- result_both$cases_c
 both_cases_t <- result_both$cases_t
 both_cases_d2 <- result_both$cases_d2
+both_enrolment <- result_both$enrolment
 
 smr_both_cases_all <- as.data.frame(
   t(apply(both_cases_all, 2, quantile,
@@ -784,6 +821,12 @@ smr_both_cases_d2 <- as.data.frame(
   t(apply(both_cases_d2, 2, quantile,
           probs = c(0.025,0.25,0.5,0.75,0.975),
           na.rm = TRUE))
+)
+
+smr_both_enrolment <- as.data.frame(
+  t(quantile(rowSums(both_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
 )
 
 ############################################################## averted cases ##############################################################
@@ -821,7 +864,6 @@ smr_pep_total_cases_d2_averted <- as.data.frame(
              na.rm = TRUE))
 )
 
-
 # ==============================================================================
 # 2. Vaccination Monotherapy Interventions
 # ==============================================================================
@@ -855,7 +897,6 @@ smr_vac_total_cases_d2_averted <- as.data.frame(
              probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
              na.rm = TRUE))
 )
-
 
 # ==============================================================================
 # 3. Combined Interventions (Doxy-PEP + Vaccination)
@@ -960,7 +1001,6 @@ smr_vac_total_cases_d2_averted <- as.data.frame(
              na.rm = TRUE))
 )
 
-
 # ==============================================================================
 # 3. Combined Interventions (Doxy-PEP + Vaccination)
 # ==============================================================================
@@ -991,6 +1031,110 @@ smr_both_total_cases_t_averted <- as.data.frame(
 
 smr_both_total_cases_d2_averted <- as.data.frame(
   t(quantile(rowSums(baseline_cases_d2 - both_cases_d2, na.rm = TRUE)/rowSums(baseline_cases_d2, na.rm = TRUE)*100, 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+############################################################## averted cases per enrolment ##############################################################
+# ==============================================================================
+# 1. Doxy-PEP Monotherapy Interventions
+# ==============================================================================
+
+smr_pep_total_efficiency_all_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_all - pep_cases_all, na.rm = TRUE)/rowSums(pep_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+smr_pep_total_efficiency_0_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_0 - pep_cases_0, na.rm = TRUE)/rowSums(pep_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+smr_pep_total_efficiency_c_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_c - pep_cases_c, na.rm = TRUE)/rowSums(pep_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+smr_pep_total_efficiency_t_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_t - pep_cases_t, na.rm = TRUE)/rowSums(pep_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+smr_pep_total_efficiency_d2_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_d2 - pep_cases_d2, na.rm = TRUE)/rowSums(pep_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+# ==============================================================================
+# 2. Vaccination Monotherapy Interventions
+# ==============================================================================
+
+smr_vac_total_efficiency_all_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_all - vac_cases_all, na.rm = TRUE)/rowSums(vac_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+smr_vac_total_efficiency_0_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_0 - vac_cases_0, na.rm = TRUE)/rowSums(vac_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+smr_vac_total_efficiency_c_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_c - vac_cases_c, na.rm = TRUE)/rowSums(vac_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+smr_vac_total_efficiency_t_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_t - vac_cases_t, na.rm = TRUE)/rowSums(vac_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+smr_vac_total_efficiency_d2_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_d2 - vac_cases_d2, na.rm = TRUE)/rowSums(vac_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+
+# ==============================================================================
+# 3. Combined Interventions (Doxy-PEP + Vaccination)
+# ==============================================================================
+
+smr_both_total_efficiency_all_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_all - both_cases_all, na.rm = TRUE)/rowSums(vac_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+smr_both_total_efficiency_0_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_0 - both_cases_0, na.rm = TRUE)/rowSums(vac_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+smr_both_total_efficiency_c_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_c - both_cases_c, na.rm = TRUE)/rowSums(vac_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+smr_both_total_efficiency_t_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_t - both_cases_t, na.rm = TRUE)/rowSums(vac_enrolment, na.rm = TRUE), 
+             probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
+             na.rm = TRUE))
+)
+
+smr_both_total_efficiency_d2_averted <- as.data.frame(
+  t(quantile(rowSums(baseline_cases_d2 - both_cases_d2, na.rm = TRUE)/rowSums(vac_enrolment, na.rm = TRUE), 
              probs = c(0.025, 0.25, 0.5, 0.75, 0.975), 
              na.rm = TRUE))
 )
@@ -1144,4 +1288,4 @@ final <- (p1 + p2 + p4 + p3 + p5 +
 # Display the combined figure
 # for horizontal dodge with points only, [7.08, 6]
 final
-# save.image("workspace_continued_0.66_0.2.RData")
+# save.image("workspace_fixed_0.66_0.2_enrolment.RData")
