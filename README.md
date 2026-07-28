@@ -1,4 +1,4 @@
-<img width="468" height="126" alt="image" src="https://github.com/user-attachments/assets/57de6f44-0d3d-434b-aa51-4de23f77e72a" /># The long-term epidemiological impacts of doxycycline post-exposure prophylaxis and vaccination against multidrug-resistant Neisseria gonorrhoeae: a mathematical modelling study
+# The long-term epidemiological impacts of doxycycline post-exposure prophylaxis and vaccination against multidrug-resistant Neisseria gonorrhoeae: a mathematical modelling study
 
 Zihao Wang, Dariya Nikitin, George T.B. Young, Matan Yechezkel, Liang En Wee, Martin T.W. Chio, Lin Geng, Rayner Kay Jin Tan, Yi Wang, David N. Fisman, Joseph A. Lewnard, Lilith K. Whittles, Jue Tao Lim </br>
 
