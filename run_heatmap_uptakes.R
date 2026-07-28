@@ -795,3 +795,15 @@ plot_16_panels_vax <- ggplot(plot_data, aes(x = p_d, y = p_v)) +
   )
 
 plot_16_panels_vax
+
+plot_16_panels_vax +
+  labs(title = "(B)") +
+  theme(
+    plot.title = element_text(
+      hjust = 0,
+      face = "bold",
+      family = "Helvetica",
+      size = size + 2,
+      margin = margin(b = 0)
+    )
+  )

@@ -1140,7 +1140,7 @@ smr_both_total_efficiency_d2_averted <- as.data.frame(
 )
 
 ############################################################## plot cases ##############################################################
-# load("workspace_fixed_0.66_0.2.RData")
+# load("workspace_continued_0.66_0.2.RData")
 prepare_plot_data <- function(df, scenario, time){
   df %>%
     mutate(
@@ -1153,7 +1153,7 @@ prepare_plot_data <- function(df, scenario, time){
     select(time, scenario, q025, q50, q975)
 }
 
-plot_cases <- function(baseline, pep, vac, both, title, size){
+plot_cases <- function(baseline, pep, vac, both, title, size, log_scale = FALSE){
   df <- bind_rows(
     prepare_plot_data(baseline, "No Intervention", time),
     prepare_plot_data(pep, "Doxy-PEP", time),
@@ -1180,45 +1180,70 @@ plot_cases <- function(baseline, pep, vac, both, title, size){
     levels = c("No Intervention", "Doxy-PEP", "Vaccination", "Doxy-PEP + Vaccination")
   )
   
-  ggplot(df, aes(x = time, y = q50, color = scenario)) +
+  p <- ggplot(df, aes(x = time, y = q50, color = scenario)) +
     geom_point(position = position_dodge(width = 0.6), size = 1) +
     geom_errorbar(
       aes(ymin = q025, ymax = q975),
       position = position_dodge(width = 0.6),
       width = 0.2
-    ) + 
-    labs(title = title, color = NULL, fill = NULL) +
-    scale_y_continuous(labels = scales::label_comma(), 
-                       expand = expansion(mult = c(0, 0.05)), 
-                       limits = c(0, NA)) + 
+    ) +
+    labs(
+      title = title,
+      color = NULL,
+      fill = NULL
+    ) +
     theme_minimal(base_size = size, base_family = "Helvetica") +
     theme(
       text = element_text(family = "Helvetica", size = size),
-      
       panel.grid.major = element_blank(),
       panel.grid.minor = element_blank(),
       
       legend.position = "inside",
       legend.position.inside = c(0.20, 0.85),
       legend.justification = c("right", "top"),
-      legend.background = element_rect(fill = scales::alpha("white", 0.6), color = NA),
+      legend.background = element_rect(fill = scales::alpha("white",0.6), color = NA),
       legend.box.background = element_rect(color = "black"),
-      legend.margin = margin(0, 0, 0, 0),
-      legend.box.margin = margin(0, 0, 0, 0),
+      legend.margin = margin(0,0,0,0),
+      legend.box.margin = margin(0,0,0,0),
       
-      plot.title = element_text(hjust = 0, face = "bold", margin = margin(b = 4), size = size),
+      plot.title = element_text(
+        hjust = 0,
+        face = "bold",
+        margin = margin(b = 4),
+        size = size
+      ),
       
       axis.ticks = element_line(color = "black", linewidth = 0.25),
-      axis.ticks.length = unit(1, "mm"),
+      axis.ticks.length = unit(1,"mm"),
       
       axis.title.x = element_text(size = size),
+      axis.title.y = element_text(size = size),
       axis.text.x = element_text(size = size),
       axis.text.y = element_text(size = size),
-      axis.title.y = element_text(size = size),
       
       axis.line.x = element_line(color = "black", linewidth = 0.25),
       axis.line.y = element_line(color = "black", linewidth = 0.25)
     )
+  
+  if (log_scale) {
+    p <- p +
+      scale_y_continuous(
+        trans = scales::pseudo_log_trans(base = 10),
+        breaks = c(0, 10, 100, 1000, 10000, 100000, 500000),
+        labels = scales::label_comma(),
+        minor_breaks = NULL,
+        expand = expansion(mult = c(0, 0.05))
+      )
+  } else {
+    p <- p +
+      scale_y_continuous(
+        labels = scales::label_comma(),
+        expand = expansion(mult = c(0, 0.05)),
+        limits = c(0, NA)
+      )
+  }
+  
+  return(p)
 }
 
 time <- 2027:2041
@@ -1246,8 +1271,9 @@ p3 <- plot_cases(
   smr_pep_cases_c,
   smr_vac_cases_c,
   smr_both_cases_c,
-  "Ceftriaxone-resistant",
-  size
+  "Ceftriaxone-resistant (pseudo-logarithmic scale)",
+  size,
+  log_scale = TRUE
 )
 
 p4 <- plot_cases(
@@ -1264,8 +1290,9 @@ p5 <- plot_cases(
   smr_pep_cases_d2,
   smr_vac_cases_d2,
   smr_both_cases_d2,
-  "Dual Resistant",
-  size
+  "Dual Resistant (pseudo-logarithmic scale)",
+  size,
+  log_scale = TRUE
 )
 
 final <- (p1 + p2 + p4 + p3 + p5 + 

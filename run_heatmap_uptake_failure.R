@@ -759,7 +759,7 @@ plot_16_panels <- ggplot(plot_data, aes(x = uptake, y = phi)) +
   scale_fill_viridis_c(
     option = "magma", 
     direction = 1,
-    name = "Strain Prevalence\n(%)", 
+    name = "Relative Strain\nComposition(%)", 
     trans = "pseudo_log",
     breaks = c(0, 1, 5, 10, 25, 50, 100), 
     limits = c(0, 100),
@@ -791,4 +791,14 @@ plot_16_panels <- ggplot(plot_data, aes(x = uptake, y = phi)) +
     plot.margin = margin(t = 5, r = 5, b = 5, l = 5, unit = "pt")
   )
 
-plot_16_panels
+plot_16_panels +
+  labs(title = "(A)") +
+  theme(
+    plot.title = element_text(
+      hjust = 0,
+      face = "bold",
+      family = "Helvetica",
+      size = size + 2,
+      margin = margin(b = 0)
+    )
+  )
