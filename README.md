@@ -8,8 +8,8 @@ Requires: RStan (version 2.32.7), R (version 4.5.0), deSolve package (version 1.
 * run_mcmc_amr_fixedinitialstate_burntin_UK.R and amr_fixedinitialstate_burntin.stan contain R scripts and Stan code, respectively, used to calibrate the strain-specific gonorrhoea transmission model to data (annual gonorrhoea diagnoses, tests, symptomatic diagnoses, asymptomatic diagnoses, percentage ceftriaxone-resistant, and percentage tetracycline-resistant among MSM) in England
 * run_amr_6years+covid.R includes R script to forward-simulate strain-specific gonorrhoea transmission dynamics under baseline conditions (without doxy-PEP and vaccination) and various intervention strategies (i.e., doxy-PEP standalone, vaccination standalone, and dual interventions) for England
 * run_amr_6years+covid_failure.R includes R script to forward-simulate strain-specific gonorrhoea transmission dynamics with an adjusted ceftriaxone treatment failure rate
-* run_heatmap_uptake_failure.R and run_heatmap_uptakes.R include R scripts for sensitivity analysis on intervention uptake rates and ceftriaxone treatment failure rate, respectively
-* run_sensitivity_doxypep_efficacy.R and run_sensitivity_efficacy.R include R scripts for sensitivity analysis on doxy-PEP efficacy and vaccine efficacy, respectively
+* run_heatmap_uptake_failure.R and run_heatmap_uptakes.R include R scripts for sensitivity analyses on intervention uptake rates and ceftriaxone treatment failure rate, respectively
+* run_sensitivity_doxypep_efficacy.R and run_sensitivity_efficacy.R include R scripts for sensitivity analyses on doxy-PEP efficacy and vaccine efficacy, respectively
 
 ### One sentence summary
 Combining vaccination with doxy-PEP can improve gonorrhoea control while mitigating, but not necessarily eliminating, doxy-PEP-associated selection for antimicrobial resistance.
