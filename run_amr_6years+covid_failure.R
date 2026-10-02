@@ -1316,3 +1316,297 @@ final <- (p1 + p2 + p4 + p3 + p5 +
 # for horizontal dodge with points only, [7.08, 6]
 final
 # save.image("workspace_fixed_0.66_0.2_enrolment.RData")
+
+############################################################## overlapping line plot ##############################################################
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+
+time <- 2027:2041
+size <- 7
+
+scenario_levels <- c(
+  "No Intervention",
+  "Doxy-PEP",
+  "Vaccination",
+  "Doxy-PEP + Vaccination"
+)
+
+# Colours matching your sample
+scenario_colours <- c(
+  "No Intervention" = "#F8766D",
+  "Doxy-PEP" = "#7CAE00",
+  "Vaccination" = "#00BFC4",
+  "Doxy-PEP + Vaccination" = "#C77CFF"
+)
+
+# Retain the previous line styles
+scenario_linetypes <- c(
+  "No Intervention" = "dashed",
+  "Doxy-PEP" = "solid",
+  "Vaccination" = "longdash",
+  "Doxy-PEP + Vaccination" = "dotdash"
+)
+
+
+# Prepare annual posterior summaries
+prepare_line_data <- function(df, scenario_name, years) {
+  
+  stopifnot(
+    nrow(df) == length(years),
+    all(c("2.5%", "50%", "97.5%") %in% names(df))
+  )
+  
+  # Rows must correspond, in order, to the supplied years.
+  tibble::tibble(
+    time = years,
+    scenario = factor(scenario_name, levels = scenario_levels),
+    q025 = df[["2.5%"]],
+    q50  = df[["50%"]],
+    q975 = df[["97.5%"]]
+  )
+}
+
+
+# Plot overlapping median lines and optional credible intervals
+plot_cases_lines <- function(
+    baseline, pep, vac, both, title,
+    years = 2027:2041,
+    size = 7,
+    show_ci = TRUE,
+    year_window = NULL,
+    zero_baseline = TRUE
+) {
+  
+  df <- bind_rows(
+    prepare_line_data(baseline, "No Intervention", years),
+    prepare_line_data(pep, "Doxy-PEP", years),
+    prepare_line_data(vac, "Vaccination", years),
+    prepare_line_data(both, "Doxy-PEP + Vaccination", years)
+  ) %>%
+    arrange(scenario, time)
+  
+  if (!is.null(year_window)) {
+    df <- df %>%
+      filter(
+        time >= year_window[1],
+        time <= year_window[2]
+      )
+  }
+  
+  p <- ggplot(
+    df,
+    aes(
+      x = time,
+      y = q50,
+      colour = scenario,
+      group = scenario
+    )
+  )
+  
+  # Draw ribbons first so median lines remain visible.
+  # Quantiles are retained without visual-floor adjustments.
+  if (show_ci) {
+    p <- p +
+      geom_ribbon(
+        aes(
+          ymin = q025,
+          ymax = q975,
+          fill = scenario
+        ),
+        alpha = 0.09,
+        colour = NA,
+        show.legend = FALSE
+      )
+  }
+  
+  if (zero_baseline) {
+    p <- p + expand_limits(y = 0)
+  }
+  
+  p +
+    geom_line(
+      aes(linetype = scenario),
+      linewidth = 0.55
+    ) +
+    geom_point(
+      size = 0.7,
+      show.legend = FALSE
+    ) +
+    scale_colour_manual(
+      name = NULL,
+      values = scenario_colours,
+      breaks = scenario_levels,
+      drop = FALSE
+    ) +
+    scale_fill_manual(
+      name = NULL,
+      values = scenario_colours,
+      breaks = scenario_levels,
+      drop = FALSE
+    ) +
+    scale_linetype_manual(
+      name = NULL,
+      values = scenario_linetypes,
+      breaks = scenario_levels,
+      drop = FALSE
+    ) +
+    scale_x_continuous(
+      breaks = if (is.null(year_window)) {
+        seq(min(years), max(years), by = 2)
+      } else {
+        seq(year_window[1], year_window[2], by = 1)
+      },
+      expand = expansion(mult = c(0.02, 0.02))
+    ) +
+    scale_y_continuous(
+      labels = scales::label_comma(),
+      expand = expansion(mult = c(0.03, 0.06))
+    ) +
+    labs(
+      title = title,
+      x = "Year",
+      y = "Annual number of\ninfections"
+    ) +
+    theme_classic(
+      base_size = size,
+      base_family = "Helvetica"
+    ) +
+    theme(
+      plot.title = element_text(
+        face = "bold",
+        hjust = 0,
+        size = size,
+        margin = margin(b = 4)
+      ),
+      axis.line = element_line(
+        colour = "black",
+        linewidth = 0.25
+      ),
+      axis.ticks = element_line(
+        colour = "black",
+        linewidth = 0.25
+      ),
+      axis.ticks.length = grid::unit(1, "mm"),
+      legend.position = "right",
+      legend.text = element_text(size = size),
+      legend.key.width = grid::unit(10, "mm")
+    )
+}
+
+
+# Panel order matching your sample:
+# All                  | Susceptible
+# Ceftriaxone-resistant | Tetracycline-resistant
+# Dual-resistant       | Empty
+
+panel_inputs <- list(
+  list(
+    baseline = smr_baseline_cases_all,
+    pep = smr_pep_cases_all,
+    vac = smr_vac_cases_all,
+    both = smr_both_cases_all,
+    title = "All"
+  ),
+  list(
+    baseline = smr_baseline_cases_0,
+    pep = smr_pep_cases_0,
+    vac = smr_vac_cases_0,
+    both = smr_both_cases_0,
+    title = "Susceptible"
+  ),
+  list(
+    baseline = smr_baseline_cases_c,
+    pep = smr_pep_cases_c,
+    vac = smr_vac_cases_c,
+    both = smr_both_cases_c,
+    title = "Ceftriaxone-resistant"
+  ),
+  list(
+    baseline = smr_baseline_cases_t,
+    pep = smr_pep_cases_t,
+    vac = smr_vac_cases_t,
+    both = smr_both_cases_t,
+    title = "Tetracycline-resistant"
+  ),
+  list(
+    baseline = smr_baseline_cases_d2,
+    pep = smr_pep_cases_d2,
+    vac = smr_vac_cases_d2,
+    both = smr_both_cases_d2,
+    title = "Dual-resistant"
+  )
+)
+
+
+# Assemble the two-column figure
+make_line_figure <- function(
+    show_ci = TRUE,
+    year_window = NULL,
+    zero_baseline = TRUE
+) {
+  
+  panels <- lapply(panel_inputs, function(inputs) {
+    do.call(
+      plot_cases_lines,
+      c(
+        inputs,
+        list(
+          years = time,
+          size = size,
+          show_ci = show_ci,
+          year_window = year_window,
+          zero_baseline = zero_baseline
+        )
+      )
+    )
+  })
+  
+  (
+    wrap_plots(
+      c(panels, list(plot_spacer())),
+      ncol = 2,
+      guides = "collect"
+    ) +
+      plot_annotation(tag_levels = "a")
+  ) &
+    theme(
+      legend.position = "right",
+      legend.text = element_text(size = size),
+      plot.tag = element_text(
+        size = size + 1,
+        face = "bold"
+      )
+    )
+}
+
+
+# Full-period figure with 95% credible intervals
+final_lines <- make_line_figure(
+  show_ci = TRUE,
+  zero_baseline = TRUE
+)
+
+final_lines
+
+
+# Optional early-years figure:
+# Medians only, with panel-specific y-axis ranges.
+# final_early <- make_line_figure(
+#   show_ci = FALSE,
+#   year_window = c(2027, 2031),
+#   zero_baseline = FALSE
+# )
+#
+# final_early
+
+
+# Optional export
+# ggsave(
+#   filename = "Figure_S2_lines.pdf",
+#   plot = final_lines,
+#   width = 9,
+#   height = 10,
+#   units = "in",
+#   bg = "white"
+# )
