@@ -1332,7 +1332,6 @@ scenario_levels <- c(
   "Doxy-PEP + Vaccination"
 )
 
-# Colours matching your sample
 scenario_colours <- c(
   "No Intervention" = "#F8766D",
   "Doxy-PEP" = "#7CAE00",
@@ -1340,7 +1339,6 @@ scenario_colours <- c(
   "Doxy-PEP + Vaccination" = "#C77CFF"
 )
 
-# Retain the previous line styles
 scenario_linetypes <- c(
   "No Intervention" = "dashed",
   "Doxy-PEP" = "solid",
@@ -1348,8 +1346,8 @@ scenario_linetypes <- c(
   "Doxy-PEP + Vaccination" = "dotdash"
 )
 
-
-# Prepare annual posterior summaries
+# Prepare annual posterior summaries.
+# Rows must correspond, in order, to the supplied years.
 prepare_line_data <- function(df, scenario_name, years) {
   
   stopifnot(
@@ -1357,25 +1355,23 @@ prepare_line_data <- function(df, scenario_name, years) {
     all(c("2.5%", "50%", "97.5%") %in% names(df))
   )
   
-  # Rows must correspond, in order, to the supplied years.
   tibble::tibble(
     time = years,
     scenario = factor(scenario_name, levels = scenario_levels),
     q025 = df[["2.5%"]],
-    q50  = df[["50%"]],
+    q50 = df[["50%"]],
     q975 = df[["97.5%"]]
   )
 }
 
-
-# Plot overlapping median lines and optional credible intervals
 plot_cases_lines <- function(
     baseline, pep, vac, both, title,
     years = 2027:2041,
     size = 7,
     show_ci = TRUE,
     year_window = NULL,
-    zero_baseline = TRUE
+    zero_baseline = TRUE,
+    pseudo_log = FALSE
 ) {
   
   df <- bind_rows(
@@ -1404,16 +1400,10 @@ plot_cases_lines <- function(
     )
   )
   
-  # Draw ribbons first so median lines remain visible.
-  # Quantiles are retained without visual-floor adjustments.
   if (show_ci) {
     p <- p +
       geom_ribbon(
-        aes(
-          ymin = q025,
-          ymax = q975,
-          fill = scenario
-        ),
+        aes(ymin = q025, ymax = q975, fill = scenario),
         alpha = 0.09,
         colour = NA,
         show.legend = FALSE
@@ -1422,6 +1412,24 @@ plot_cases_lines <- function(
   
   if (zero_baseline) {
     p <- p + expand_limits(y = 0)
+  }
+  
+  # Apply pseudo-log scaling only to Cef-R and Dual-R.
+  # sigma = 1 gives a smooth, approximately linear region near zero.
+  # Breaks outside the plotted data range are automatically omitted.
+  y_scale <- if (pseudo_log) {
+    scale_y_continuous(
+      trans = scales::pseudo_log_trans(sigma = 1, base = 10),
+      breaks = c(0, 10, 100, 1000, 10000, 100000, 500000),
+      labels = scales::label_number(accuracy = 1, big.mark = ","),
+      minor_breaks = NULL,
+      expand = expansion(mult = c(0.03, 0.06))
+    )
+  } else {
+    scale_y_continuous(
+      labels = scales::label_comma(),
+      expand = expansion(mult = c(0.03, 0.06))
+    )
   }
   
   p +
@@ -1459,10 +1467,7 @@ plot_cases_lines <- function(
       },
       expand = expansion(mult = c(0.02, 0.02))
     ) +
-    scale_y_continuous(
-      labels = scales::label_comma(),
-      expand = expansion(mult = c(0.03, 0.06))
-    ) +
+    y_scale +
     labs(
       title = title,
       x = "Year",
@@ -1494,11 +1499,10 @@ plot_cases_lines <- function(
     )
 }
 
-
-# Panel order matching your sample:
-# All                  | Susceptible
-# Ceftriaxone-resistant | Tetracycline-resistant
-# Dual-resistant       | Empty
+# Panel order:
+# a All                    | b Susceptible
+# c Tetracycline-resistant  | d Ceftriaxone-resistant (pseudo-log)
+# e Dual-resistant         | Empty
 
 panel_inputs <- list(
   list(
@@ -1506,40 +1510,43 @@ panel_inputs <- list(
     pep = smr_pep_cases_all,
     vac = smr_vac_cases_all,
     both = smr_both_cases_all,
-    title = "All"
+    title = "All",
+    pseudo_log = FALSE
   ),
   list(
     baseline = smr_baseline_cases_0,
     pep = smr_pep_cases_0,
     vac = smr_vac_cases_0,
     both = smr_both_cases_0,
-    title = "Susceptible"
-  ),
-  list(
-    baseline = smr_baseline_cases_c,
-    pep = smr_pep_cases_c,
-    vac = smr_vac_cases_c,
-    both = smr_both_cases_c,
-    title = "Ceftriaxone-resistant"
+    title = "Susceptible",
+    pseudo_log = FALSE
   ),
   list(
     baseline = smr_baseline_cases_t,
     pep = smr_pep_cases_t,
     vac = smr_vac_cases_t,
     both = smr_both_cases_t,
-    title = "Tetracycline-resistant"
+    title = "Tetracycline-resistant",
+    pseudo_log = FALSE
+  ),
+  list(
+    baseline = smr_baseline_cases_c,
+    pep = smr_pep_cases_c,
+    vac = smr_vac_cases_c,
+    both = smr_both_cases_c,
+    title = "Ceftriaxone-resistant\n(pseudo-logarithmic scale)",
+    pseudo_log = TRUE
   ),
   list(
     baseline = smr_baseline_cases_d2,
     pep = smr_pep_cases_d2,
     vac = smr_vac_cases_d2,
     both = smr_both_cases_d2,
-    title = "Dual-resistant"
+    title = "Dual-resistant\n(pseudo-logarithmic scale)",
+    pseudo_log = TRUE
   )
 )
 
-
-# Assemble the two-column figure
 make_line_figure <- function(
     show_ci = TRUE,
     year_window = NULL,
@@ -1580,33 +1587,29 @@ make_line_figure <- function(
     )
 }
 
-
-# Full-period figure with 95% credible intervals
+# Full-period figure with 95% credible intervals.
 final_lines <- make_line_figure(
   show_ci = TRUE,
   zero_baseline = TRUE
 )
 
-final_lines
+print(final_lines)
 
+# Optional early-years figure: medians only.
+# Panels d and e retain pseudo-log scaling.
+final_early <- make_line_figure(
+  show_ci = FALSE,
+  year_window = c(2027, 2031),
+  zero_baseline = FALSE
+)
 
-# Optional early-years figure:
-# Medians only, with panel-specific y-axis ranges.
-# final_early <- make_line_figure(
-#   show_ci = FALSE,
-#   year_window = c(2027, 2031),
-#   zero_baseline = FALSE
-# )
-#
-# final_early
+print(final_early)
 
-
-# Optional export
-# ggsave(
-#   filename = "Figure_S2_lines.pdf",
-#   plot = final_lines,
-#   width = 9,
-#   height = 10,
-#   units = "in",
-#   bg = "white"
-# )
+ggsave(
+  filename = "Figure_S2_lines.pdf",
+  plot = final_lines,
+  width = 9,
+  height = 10,
+  units = "in",
+  bg = "white"
+)
